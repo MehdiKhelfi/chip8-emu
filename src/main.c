@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include "chip8.c"
 #define W_HEIGHT 32
 #define W_WIDTH 64
