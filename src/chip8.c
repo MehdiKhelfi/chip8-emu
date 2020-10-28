@@ -2,10 +2,9 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include <time.h>
 #include <string.h>
-#include <windows.h>
 typedef struct CHIP8{
     uint16_t stack[16];
     uint8_t memory[4096]; // chip 8 has 4kb of mem
