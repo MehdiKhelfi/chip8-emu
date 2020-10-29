@@ -54,6 +54,7 @@ int main(int argc, char **argv)
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     printf("Done");
+    SDL_Rect rect;
     while(true)
     {
         emulatecycle(c, renderer);
@@ -61,13 +62,17 @@ int main(int argc, char **argv)
             for(int i = 0; i != 64; i++){
                 for(int a = 0; a != 32; a++){
                     if(chip8.graphics[i][a]){
-                        SDL_Rect rect = {i*2*2, a*2*2, 2*2, 2*2};
+                        rect.x = i*4;
+                        rect.y = a*4;
+                        rect.w = rect.h = 4;
                         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
                         SDL_RenderDrawRect(renderer, &rect);
                         SDL_RenderFillRect(renderer, &rect);
                     }
                     else{
-                        SDL_Rect rect = {i*2*2, a*2*2, 2*2, 2*2};
+                        rect.x = i*4;
+                        rect.y = a*4;
+                        rect.w = rect.h = 4;
                         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
                         SDL_RenderDrawRect(renderer, &rect);
                         SDL_RenderFillRect(renderer, &rect);
@@ -76,7 +81,7 @@ int main(int argc, char **argv)
             }
             SDL_RenderPresent(renderer);
             chip8.drawFlag = false;
-        }      
+        }
         SDL_Event event;
         while(SDL_PollEvent(&event)){
             if(event.type == SDL_QUIT)
@@ -107,6 +112,5 @@ int main(int argc, char **argv)
             }
 
         }
-        SDL_Delay(1);
     }
 }
