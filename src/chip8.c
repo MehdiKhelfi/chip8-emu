@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
-#define RAND_MAX 255
 typedef struct CHIP8{
     uint16_t stack[16];
     uint8_t memory[4096]; // chip 8 has 4kb of mem
