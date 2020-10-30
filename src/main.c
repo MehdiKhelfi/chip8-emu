@@ -6,6 +6,7 @@
 #include "chip8.c"
 int main(int argc, char **argv)
 {
+    //declare all keys
     uint8_t SDL_keys[16] ={
     SDLK_a,
     SDLK_z,
@@ -23,65 +24,82 @@ int main(int argc, char **argv)
     SDLK_g,
     SDLK_h,
     SDLK_v,
-    }; //defines all keys
+    };
     //Create a chip8 struct and struct pointer to use it in functions
     CHIP8 *c, chip8;
     c = &chip8;
-    init(c); // initialize our chip8 struct 
+    // initialize our chip8 struct
+    init(c); 
     if(argc < 2){
         printf("Usage : chip8 <path to file>");
         return 1;
     }
-    loadfile(c, argv[1]); //load the rom gave as an argument in mem
+
+    //load the rom in mem
+    loadfile(c, argv[1]);
+    
+    //initialize SDL
     if (SDL_Init(SDL_INIT_EVERYTHING) != 0 )
     {
         fprintf(stdout,"Failed to initialize SDL... Error : %s\n",SDL_GetError());
         return -1;
     }
+    
+    //create the window
     SDL_Window* window = NULL;
     window = SDL_CreateWindow("Chip8 emulator", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 64*4, 32*4, SDL_WINDOW_SHOWN); //create the window with 64*4 by 32*4 res
     if (window == NULL){
         printf( "An error occured while creating the window... SDL_Error: %s\n", SDL_GetError());
         exit(2);
     }
+    
+    //create the renderer
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if(renderer == NULL)
     {
-    printf("An error occured while creating the renderer : %s",SDL_GetError());
-    return EXIT_FAILURE;
+        printf("An error occured while creating the renderer : %s",SDL_GetError());
+        return EXIT_FAILURE;
     }
+
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer); //fill the window in black
-    SDL_Rect rect; //declare rect for drawing
+    SDL_RenderClear(renderer);
+
+    //rectangle for drawing
+    SDL_Rect rect;
     while(true)
     {
         emulatecycle(c, renderer);
+        //Draws on screen if a draw occured
         if(chip8.drawFlag){
             for(int i = 0; i != 64; i++){
-                for(int a = 0; a != 32; a++){ //loop through the graphics buffer to draw pixel
+                for(int a = 0; a != 32; a++){
                     if(chip8.graphics[i][a]){
+                        // Draw white pixels
                         rect.x = i*4;
-                        rect.y = a*4; //set the coordinates of the rectangle
-                        rect.w = rect.h = 4; //set the size of the rectangle to 4 which is the scaling factor used in this program (the window is 64 * 4 and 32 * 4)
+                        rect.y = a*4; 
+                        rect.w = rect.h = 4;
                         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
                         SDL_RenderDrawRect(renderer, &rect);
-                        SDL_RenderFillRect(renderer, &rect); // draw white rects
+                        SDL_RenderFillRect(renderer, &rect);
                     }
                     else{
+                        // Draw black pixels
                         rect.x = i*4;
                         rect.y = a*4;
                         rect.w = rect.h = 4;
                         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
                         SDL_RenderDrawRect(renderer, &rect);
-                        SDL_RenderFillRect(renderer, &rect); //draw black rects
+                        SDL_RenderFillRect(renderer, &rect);
                     }
                 }
             }
-            SDL_RenderPresent(renderer); //render the drawings to screen
-            chip8.drawFlag = false;// set the drawflag to false back
+            //render the drawings to screen
+            SDL_RenderPresent(renderer);
+            chip8.drawFlag = false;
         }
         SDL_Event event;
-        while(SDL_PollEvent(&event)){ // Check sdl events (keys)
+        // Check sdl events (keys)
+        while(SDL_PollEvent(&event)){
             if(event.type == SDL_QUIT)
                 exit(0);
             else if(event.type == SDL_KEYDOWN){
@@ -92,17 +110,19 @@ int main(int argc, char **argv)
                             exit(0);
                             break;
                 }
+                //set pressed keys to one
                 for (int i = 0; i < 16; i++){
                     if (event.key.keysym.sym == SDL_keys[i]){
-                        chip8.key[i] = 1;//set pressed keys to one
+                        chip8.key[i] = 1;
                     }
                 }    
                 
             }
+            //set released keys to zero
             else if(event.type == SDL_KEYUP){
                 for (int i = 0; i < 16; i++){
                     if (event.key.keysym.sym == SDL_keys[i]){
-                        chip8.key[i] = 0; //set released keys to zero
+                        chip8.key[i] = 0; 
                     }
                 }
             }

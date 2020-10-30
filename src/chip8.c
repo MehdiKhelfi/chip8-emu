@@ -4,20 +4,34 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+//Our Chip8 struct
 typedef struct CHIP8{
-    uint16_t stack[16];// The chip 8 can store 16 addresses (for calls)
-    uint8_t memory[4096]; // chip 8 has 4kb of mem
-    uint8_t V[0xF]; //14 basic 8bit registers and one "Flag" register (for borrow, carry, collisions ...)
-    uint16_t I; // I reg to store 12bit addresses
-    uint16_t pc; // Program counter, indicates which instruction should be executed
-    uint16_t opcode; // Well... it's the opcode
-    int sp; // Stack pointer, points to the top of the stack
-    uint8_t graphics[64][32]; //2d array for graphics (64 * 32 = 2048 of vram / resolution)
-    uint8_t key[16]; //pressed keys
-    uint8_t delay_t; //delay timer
-    uint8_t sound_t; // sound timer
-    bool drawFlag; //If it's true, the program draw on screen
-    bool keyPressed; //The name is quite explicit...
+    // The chip 8 can store up to 16 addresses (for calls)
+    uint16_t stack[16];
+    // chip 8 has 4kb of mem
+    uint8_t memory[4096];
+    //14 all purpose 8bit registers and one "Flag" register (for borrow, carry, collisions ...)
+    uint8_t V[0xF];
+    //I register to store 12bit addresses
+    uint16_t I;
+    //Program counter, indicates which instruction should be executed
+    uint16_t pc;
+    //Variable where we store the current opcode
+    uint16_t opcode;
+    //Stack pointer, points to the top of the stack
+    int sp;
+    //2d array for graphics (64 * 32 = 2048 of vram)
+    uint8_t graphics[64][32];
+    //pressed keys
+    uint8_t key[16];
+    //delay timer, decrements every cycle
+    uint8_t delay_t;
+    //sound timer, beeps when non zero (TODO)
+    uint8_t sound_t;
+    //If it's true, the program draw on screen 
+    bool drawFlag;
+    //True if a key is pressed
+    bool keyPressed;
 } CHIP8;
 
 unsigned char font[80] = 
@@ -47,13 +61,16 @@ void init(CHIP8 *c)
     memset(c->stack, 0, 16*sizeof(uint8_t));
     memset(c->key, 0, 16*sizeof(uint8_t));
     memset(c->V, 0, 16*sizeof(uint8_t));
+    //load font in mem
     for(int i = 0; i < 80; i++){
-        c->memory[i] = font[i]; //load font in mem
+        c->memory[i] = font[i];
     }
-    c->pc = 0x200; //chip 8 programs start at 0x200 in mem
-    c->sp = -1; //as the stack is empty, I initialize the stack pointer at -1
-    c->I = c->opcode = c->keyPressed = c->drawFlag = c->delay_t = c->sound_t = 0; // set everything to zero
-    srandom(time(NULL)); //seed the random function
+    //chip 8 programs start at 0x200 in mem
+    c->pc = 0x200;
+    c->sp = -1;
+    c->I = c->opcode = c->keyPressed = c->drawFlag = c->delay_t = c->sound_t = 0;
+    //seed the random function
+    srandom(time(NULL));
 }
 
 int loadfile(CHIP8 *c, const char *argv)
@@ -67,19 +84,22 @@ int loadfile(CHIP8 *c, const char *argv)
         return 1;
     }
     rewind(f);
-    fread(c->memory+0x200, size, 1, f); // loads the program at 0x200 in mem
+    // loads the program at 0x200 in mem
+    fread(c->memory+0x200, size, 1, f);
     fclose(f);
 }
 
 void emulatecycle(CHIP8 *c, SDL_Renderer* renderer)
 {
-    c->opcode = c->memory[c->pc] << 8 | c->memory[c->pc + 1]; // merge the bytes into a single, two bytes opcode
-    uint8_t x = (c->opcode & 0x0F00) >> 8; // x register in opcodes
-    uint8_t y = (c->opcode & 0x00F0) >> 4; // y register in opcodes
-    uint8_t n = (c->opcode & 0x000F); // the nibble in opcodes
-    uint16_t nnn = (c->opcode & 0x0FFF); // 12 bits values in opcodes
-    uint8_t kk = c->opcode & 0x00FF; // bytes in opcode
-    int num = c->V[x]; // variable used for BCD (see opcode FX33)
+    // merge the bytes into a single, two bytes opcode variable
+    c->opcode = c->memory[c->pc] << 8 | c->memory[c->pc + 1];
+    //declare commonly used values in opcodes
+    uint8_t x = (c->opcode & 0x0F00) >> 8;
+    uint8_t y = (c->opcode & 0x00F0) >> 4;
+    uint8_t n = (c->opcode & 0x000F);
+    uint16_t nnn = (c->opcode & 0x0FFF);
+    uint8_t kk = c->opcode & 0x00FF;
+    int num = c->V[x];
     switch (c->opcode & 0xF000)
     {
         case 0x0000:
@@ -116,20 +136,20 @@ void emulatecycle(CHIP8 *c, SDL_Renderer* renderer)
             c->pc = nnn;
             break;
         case 0x3000:
-            //Skips the next instruction if VX equals NN. (Usually the next instruction is a jump to skip a code block)
+            //Skips the next instruction if VX equals NN.
             if(c->V[x] == kk)
                 c->pc += 2;
             c->pc+=2;
             break;
         case 0x4000:
-            //Skips the next instruction if VX doesn't equal NN. (Usually the next instruction is a jump to skip a code block)
+            //Skips the next instruction if VX doesn't equal NN.
             if(c->V[x] != kk)
                 c->pc += 4;
             else
                 c->pc += 2;
             break;
         case 0x5000:
-            //Skips the next instruction if VX equals VY. (Usually the next instruction is a jump to skip a code block)
+            //Skips the next instruction if VX equals VY.
             if(c->V[x] == c->V[y])
                 c->pc += 2;
             c->pc += 2;
@@ -193,7 +213,7 @@ void emulatecycle(CHIP8 *c, SDL_Renderer* renderer)
                     break;
                 case 0xE:
                     //Stores the most significant bit of VX in VF and then shifts VX to the left by 1.
-                    c->V[0xF] = (c->V[x] & 0x80) >> 7; // 0x80 = 0b10000000
+                    c->V[0xF] = (c->V[x] & 0x80) >> 7;
                     c->V[x] <<= 1;
                     c->pc += 2;
                     break;
@@ -204,7 +224,7 @@ void emulatecycle(CHIP8 *c, SDL_Renderer* renderer)
             }
             break;
         case 0x9000:
-            // Skips the next instruction if VX doesn't equal VY. (Usually the next instruction is a jump to skip a code block)
+            // Skips the next instruction if VX doesn't equal VY.
             if(c->V[x] != c->V[y]){
                 c->pc += 2;
             }
@@ -220,7 +240,7 @@ void emulatecycle(CHIP8 *c, SDL_Renderer* renderer)
             c->pc = nnn + c->V[0];
             break;
         case 0xC000:{ 
-            // Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
+            // Sets VX to the result of a bitwise AND operation on a random number and NN.
             uint8_t rand = random();
             c->V[x] = rand & kk;
             c->pc += 2;
@@ -228,18 +248,18 @@ void emulatecycle(CHIP8 *c, SDL_Renderer* renderer)
         }
         case 0xD000:
         {
-            //Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels. 
-            //Each row of 8 pixels is read as bit-coded starting from memory location I
-            //I value doesn’t change after the execution of this instruction.
+            /* Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels. 
+               Each row of 8 pixels is read as bit-coded starting from memory location I
+               set VF to one if a bit is flipped from set to unset (collision basically) */
             uint8_t row;
             c->V[0xF] = 0;
-            for(int i = 0; i != n; i++){ //loop through sprite lines
+            for(int i = 0; i != n; i++){
                 row = c->memory[c->I+i];
-                for(int a = 0; a != 8; a++){ //loop through bits of rows in the sprites
-                    int pixel = row & (0x80 >> a); // Check if the bit is 1 or 0
+                for(int a = 0; a != 8; a++){
+                    int pixel = row & (0x80 >> a);
                     if(pixel && c->V[y]+i <= 64*2 && c->V[x]+a <= 32*2){
-                        c->V[0xF] = (c->graphics[c->V[x]+a][c->V[y]+i] > 0) ? 1 : 0; //set VF if a bit is flipped from set to unset (collision basically)
-                        c->graphics[c->V[x]+a][c->V[y]+i] ^= 1; // xor the sprite bit with the graphic buffer bit
+                        c->V[0xF] = (c->graphics[c->V[x]+a][c->V[y]+i] > 0) ? 1 : 0;
+                        c->graphics[c->V[x]+a][c->V[y]+i] ^= 1;
                         c->drawFlag = true;
                     }
                     
@@ -251,14 +271,14 @@ void emulatecycle(CHIP8 *c, SDL_Renderer* renderer)
         case 0xE000:
             switch(c->opcode & 0x000F){
                 case 0xE:
-                    //Skips the next instruction if the key stored in VX is pressed. (Usually the next instruction is a jump to skip a code block)
+                    //Skips the next instruction if the key stored in VX is pressed.
                     if(c->key[c->V[x]]){
                         c->pc += 2;
                     }
                     c->pc += 2;
                     break;
                 case 0x1: 
-                    //Skips the next instruction if the key stored in VX isn't pressed. (Usually the next instruction is a jump to skip a code block)
+                    //Skips the next instruction if the key stored in VX isn't pressed.
                     if(c->key[c->V[x]] == 0){
                         c->pc += 2;
                     }
@@ -327,9 +347,9 @@ void emulatecycle(CHIP8 *c, SDL_Renderer* renderer)
                     c->pc += 2;
                     break;
                 case 3:
-                    // Stores the binary-coded decimal representation of VX
-                    //with the most significant of three digits at the address in I, the middle digit at I plus 1, and the least significant digit at I plus 2.
-                    //(In other words, take the decimal representation of VX, place the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.)
+                    /* Stores the binary-coded decimal representation of VX
+                    with the most significant of three digits at the address in I, the middle digit at I plus 1, and the least significant digit at I plus 2.
+                    (place the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.) */
                     for(int i = 2; i != -1; i--){
                         c->memory[c->I+i] = num%10;
                         num /= 10;
@@ -337,15 +357,15 @@ void emulatecycle(CHIP8 *c, SDL_Renderer* renderer)
                     c->pc += 2;
                     break;
                 case 5:
-                    //Stores V0 to VX (including VX) in memory starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified.
+                    //Stores V0 to VX (including VX) in memory starting at address I.
                     for(int i = 0; i <= x; i++){
                         c->memory[c->I+i] = c->V[i];
                     }
                     c->pc += 2;
                     break;
                 case 6:
-                    //Fills V0 to VX (including VX) with values from memory starting at address I. The offset from I is increased by 1 for each value written
-                    //I is then set to I + X + 1
+                    /* Fills V0 to VX (including VX) with values from memory starting at address I.
+                    I is then set to I + X + 1 */
                     for(int i = 0; i <= x; i++){
                         c->V[i] = c->memory[c->I+i];
                     }
@@ -363,6 +383,7 @@ void emulatecycle(CHIP8 *c, SDL_Renderer* renderer)
             exit(1);
             break;
     }
+    //decrement delay timer if it's non-zero
     if(c->delay_t)
-        c->delay_t--; //decrement delay timer
+        c->delay_t--;
 }
