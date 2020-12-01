@@ -47,7 +47,7 @@ int main(int argc, char **argv)
     
     //create the window
     SDL_Window* window = NULL;
-    window = SDL_CreateWindow("Chip8 emulator", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 64*4, 32*4, SDL_WINDOW_SHOWN); //create the window with 64*4 by 32*4 res
+    window = SDL_CreateWindow("Chip8 emulator", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 64*4, 32*4, SDL_WINDOW_SHOWN);
     if (window == NULL){
         printf( "An error occured while creating the window... SDL_Error: %s\n", SDL_GetError());
         exit(2);
@@ -71,26 +71,20 @@ int main(int argc, char **argv)
         emulatecycle(c, renderer);
         //Draws on screen if a draw occured
         if(chip8.drawFlag){
-            for(int i = 0; i != 64; i++){
-                for(int a = 0; a != 32; a++){
-                    if(chip8.graphics[i][a]){
-                        // Draw white pixels
-                        rect.x = i*4;
-                        rect.y = a*4; 
-                        rect.w = rect.h = 4;
-                        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-                        SDL_RenderDrawRect(renderer, &rect);
-                        SDL_RenderFillRect(renderer, &rect);
-                    }
-                    else{
-                        // Draw black pixels
-                        rect.x = i*4;
-                        rect.y = a*4;
-                        rect.w = rect.h = 4;
-                        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-                        SDL_RenderDrawRect(renderer, &rect);
-                        SDL_RenderFillRect(renderer, &rect);
-                    }
+            clearRect(&rect);
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0 ,255);
+            SDL_RenderClear(renderer);
+            for(int i = 0; i < 64*32; i++){
+                if(chip8.graphics[i]){
+                    // Draw white pixels
+                    int y = (i/64);
+                    int x = (i - y * 64);
+                    rect.y = y * 4;
+                    rect.x = x * 4;
+                    rect.w = rect.h = 4;
+                    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+                    SDL_RenderDrawRect(renderer, &rect);
+                    SDL_RenderFillRect(renderer, &rect);
                 }
             }
             //render the drawings to screen
@@ -128,5 +122,6 @@ int main(int argc, char **argv)
             }
 
         }
+        SDL_Delay(1);
     }
 }

@@ -21,7 +21,7 @@ typedef struct CHIP8{
     //Stack pointer, points to the top of the stack
     int sp;
     //2d array for graphics (64 * 32 = 2048 of vram)
-    uint8_t graphics[64][32];
+    uint8_t graphics[64*32];
     //pressed keys
     uint8_t key[16];
     //delay timer, decrements every cycle
@@ -70,7 +70,7 @@ void init(CHIP8 *c)
     c->sp = -1;
     c->I = c->opcode = c->keyPressed = c->drawFlag = c->delay_t = c->sound_t = 0;
     //seed the random function
-    srandom(time(NULL));
+    srand(time(NULL));
 }
 
 int loadfile(CHIP8 *c, const char *argv)
@@ -87,6 +87,10 @@ int loadfile(CHIP8 *c, const char *argv)
     // loads the program at 0x200 in mem
     fread(c->memory+0x200, size, 1, f);
     fclose(f);
+}
+//Function to clear the rectangle before each use
+void clearRect(SDL_Rect *rect){
+    rect->h = rect->w = rect->x = rect->y = 0;
 }
 
 void emulatecycle(CHIP8 *c, SDL_Renderer* renderer)
@@ -241,8 +245,8 @@ void emulatecycle(CHIP8 *c, SDL_Renderer* renderer)
             break;
         case 0xC000:{ 
             // Sets VX to the result of a bitwise AND operation on a random number and NN.
-            uint8_t rand = random();
-            c->V[x] = rand & kk;
+            uint8_t random = rand();
+            c->V[x] = random & kk;
             c->pc += 2;
             break;
         }
@@ -253,18 +257,18 @@ void emulatecycle(CHIP8 *c, SDL_Renderer* renderer)
                set VF to one if a bit is flipped from set to unset (collision basically) */
             uint8_t row;
             c->V[0xF] = 0;
-            for(int i = 0; i != n; i++){
-                row = c->memory[c->I+i];
-                for(int a = 0; a != 8; a++){
-                    int pixel = row & (0x80 >> a);
-                    if(pixel && c->V[y]+i <= 64*2 && c->V[x]+a <= 32*2){
-                        c->V[0xF] = (c->graphics[c->V[x]+a][c->V[y]+i] > 0) ? 1 : 0;
-                        c->graphics[c->V[x]+a][c->V[y]+i] ^= 1;
-                        c->drawFlag = true;
+            for(int ysprite = 0; ysprite < n; ysprite++){
+                row = c->memory[c->I+ysprite];
+                for(int xsprite = 0; xsprite < 8; xsprite++){
+                    if(row & (0x80 >> xsprite)){
+                        if(c->graphics[(xsprite + c->V[x]) + ((ysprite + c->V[y]) * 64)] != 0){
+                            c->V[0xF] = 1;
+                        }
+                        c->graphics[(xsprite + c->V[x]) + ((ysprite + c->V[y]) * 64)] ^= 1;
                     }
-                    
                 }
             }
+            c->drawFlag = true;
             c->pc += 2;
             break;
         }
